@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>2D Artist - Draw Together!</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    let socket = io();
+    var color = "black"; // initializing the drawing color
+
+    socket.on('connect', (userData) => {
+      console.log('Client Connected!')
+
+      window.addEventListener("load", () => {
+        const canvas = document.getElementById("drawing-canvas");
+        const clearBtn = document.getElementById("clear-canvas-btn");
+        const ctx = canvas.getContext("2d");
+
+        const teamOneBtn = document.getElementById('team-1-btn');
+        const teamTwoBtn = document.getElementById('team-2-btn');
+        const teamModal = document.getElementById('choose-team-modal');
+        const drawingSpace = document.getElementById('drawing-ui');
+        const canvasSpace = document.getElementById('canvas-space');
+
+        const readyModal = document.getElementById('player-ready-modal');
+        const readyBtn = document.getElementById('ready-btn');
+        const readyStatus = document.getElementById('ready-status');
+
+        const teamIndicator = document.getElementById('team-indicator');
+        const results = document.getElementById('results-display')
+
+        // initializing the canvas 
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        let drawing = false;
+
+        function startPosition(e) {
+          drawing = true;
+          draw(e);
+        }
+
+        function endPosition() {
+          drawing = false;
+          ctx.beginPath();
+        }
+
+        function parseCanvas(jpgQuality) {
+          var dataURL = canvas.toDataURL('image/jpeg', jpgQuality);
+          return dataURL;
+        }
+
+        function draw(e) {
+          if (!drawing) return;
+          ctx.lineWidth = 10;
+          ctx.lineCap = "round";
+          ctx.strokeStyle = color;
+
+          ctx.lineTo(e.offsetX, e.offsetY);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(e.offsetX, e.offsetY);
+
+          socket.emit('update_drawing', parseCanvas(1.0));
+        }
+
+        function clearCanvas() {
+          if (canvas === undefined || canvas === null) return;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = "white";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          socket.emit('update_drawing', parseCanvas(1.0));
+        }
+
+        function getReady() {
+          socket.emit('get_ready_players');
+          teamModal.style.display = 'none';
+          readyModal.style.display = 'inline-block';
+        }
+
+        function startGame() {
+          readyModal.style.display = 'none';
+          drawingSpace.style.display = 'inline-block';
+        }
+
+        socket.on('color_change', (data) => {
+          let colorStr = 'rgb(' + data.r + ',' + data.g + ',' + data.b + ')';
+          console.log('color_change:' + colorStr);
+          color = colorStr;
+          console.log(color);
+        });
+
+        socket.on('ready_count_update', (data) => {
+          playerReadyString = `${data}/4 Players Ready.`
+          readyStatus.innerHTML = playerReadyString;
+        });
+
+        socket.on('start_game', (data) => {
+          readyStatus.innerHTML = `Starting game...`;
+          setTimeout(() => startGame(), 2000)
+        });
+
+        socket.on('send_results', (data) => {
+          let resultsString = `Times up! Your team's drawing was ${data}% accurate!`
+          canvasSpace.style.display = 'none';
+          results.style.display = 'inline-block';
+          results.innerHTML = resultsString;
+        });
+
+        socket.on('end_game', (data) => {
+          console.log('times up!');
+          socket.emit('rate_final_result', parseCanvas(1.0));
+        });
+
+        canvas.addEventListener('mousedown', startPosition);
+        canvas.addEventListener('mouseup', endPosition);
+        canvas.addEventListener('mousemove', draw);
+        clearBtn.addEventListener('click', clearCanvas);
+
+        teamOneBtn.addEventListener('click', function () {
+          socket.emit('choose_team', 'team_one');
+          getReady();
+          teamIndicator.innerHTML = 'You are on team one';
+        });
+
+        teamTwoBtn.addEventListener('click', function () {
+          socket.emit('choose_team', 'team_two');
+          getReady();
+          teamIndicator.innerHTML = 'You are on team two';
+        });
+
+        readyBtn.addEventListener('click', function () {
+          socket.emit('player_ready');
+        });
+      });
+    });
+
+  </script>
+</head>
+
+<body class="min-h-screen bg-slate-300">
+  <div id="choose-team-modal"
+    class="drop-shadow-lg bg-white relative left-1/2 -translate-x-1/2 xl:w-1/4 w-2/3 mt-64 p-4 rounded-lg">
+    <h1 class="text-3xl font-bold text-center">Draw Together!</h1>
+    <h1 class="text-xl text-center">Choose your team</h1>
+    <div class="my-5 w-fit relative left-1/2 -translate-x-1/2">
+      <button id="team-1-btn"
+        class="px-4 py-2 mr-2 my-2 w-40 font-semibold text-sm bg-yellow-500 hover:bg-yellow-600 text-white rounded-full shadow-sm">Team
+        1</button>
+      <button id="team-2-btn"
+        class="px-4 py-2 my-2 w-40 font-semibold text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-sm">Team
+        2</button>
+    </div>
+  </div>
+
+  <div id="player-ready-modal" style="display: none;"
+    class="drop-shadow-lg bg-white relative left-1/2 -translate-x-1/2 xl:w-1/4 w-2/3 mt-64 p-4 rounded-lg">
+    <h1 class="text-3xl font-bold text-center">Draw Together!</h1>
+    <h1 class="text-xl text-center" id="ready-status"></h1>
+    <div class="my-5 w-fit relative left-1/2 -translate-x-1/2">
+      <button id="ready-btn"
+        class="px-4 py-2 mr-2 w-40 font-semibold text-sm bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-sm">
+        Click to indicate you are ready!
+      </button>
+    </div>
+  </div>
+
+  <div id="drawing-ui" style="display: none;"
+    class="drop-shadow-lg bg-gray-200 relative left-1/2 -translate-x-1/2 xl:w-1/2 w-2/3 mt-20 p-4 rounded-lg">
+    <h1 class="text-3xl my-3 font-bold text-center">Draw Together!</h1>
+    <div class="w-fit relative left-1/2 -translate-x-1/2">
+      <p id="team-indicator"></p>
+    </div>
+    <div id="canvas-space">
+      <canvas id="drawing-canvas" class="border border-2 mt-10 mb-3 mx-auto" width="500" height="500">
+      </canvas>
+      <div class="w-fit relative left-1/2 -translate-x-1/2">
+        <button id="clear-canvas-btn"
+          class="px-4 py-2 font-semibold text-sm bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-sm">
+          Clear Canvas
+        </button>
+      </div>
+    </div>
+    <p style="display: none;" id="results-display" class="text-3xl font-bold text-center my-10"></p>
+  </div>
+</body>
+
+</html>

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>3D Assistant - Draw Together!</title>
+  <meta name="description" content="DS3 - Assignment 2">
+  <script src="js/aframe.min.js"></script>
+  <script src="js/main.js"></script>
+  <script src="https://unpkg.com/aframe-environment-component@1.2.0/dist/aframe-environment-component.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    AFRAME.registerComponent('live-canvas', {
+      dependencies: ['geometry', 'material'],
+
+      schema: {
+        src: { type: "string", default: "#id" }
+      },
+
+      init() {
+        if (!document.querySelector(this.data.src)) {
+          console.error("no such canvas");
+          return;
+        }
+        this.el.setAttribute('material', { src: this.data.src });
+      },
+
+      tick() {
+        var el = this.el;
+        var material;
+
+        material = el.getObject3D('mesh').material;
+        if (!material.map) {
+          console.error("no material map");
+          this.el.removeAttribute('live-canvas');
+          return;
+        }
+        material.map.needsUpdate = true;
+      }
+    });
+  </script>
+  <link rel="stylesheet" href="css/main.css">
+</head>
+
+<body>
+  <div id="menu-overlay">
+    <div id="choose-team-modal"
+      class="drop-shadow-lg bg-white relative left-1/2 -translate-x-1/2 w-1/4 mt-64 p-4 rounded-lg">
+      <h1 class="text-3xl font-bold text-center">Draw Together!</h1>
+      <h1 class="text-xl text-center">Choose your team</h1>
+      <div class="my-5 w-fit relative left-1/2 -translate-x-1/2">
+        <button id="team-1-btn"
+          class="px-4 py-2 mr-2 w-40 font-semibold text-sm bg-yellow-500 hover:bg-yellow-600 text-white rounded-full shadow-sm">Team
+          1</button>
+        <button id="team-2-btn"
+          class="px-4 py-2 w-40 font-semibold text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-sm">Team
+          2</button>
+      </div>
+    </div>
+    <button id="menu-start-button" class="bg-indigo-500 hover:bg-indigo-600 rounded-full shadow-sm font-semibold text-white p-3" style="display:none">Start Experience</button>
+  </div>
+
+  <a-scene renderer="colorManagement: true; physicallyCorrectLights:true;">
+    <a-assets>
+      <canvas id="view-canvas" width="500" height="500" style="background-color: white;"></canvas>
+      <canvas id="reference-canvas" width="500" height="500" style="background-color: white;"></canvas>
+    </a-assets>
+
+    <a-entity environment="preset: forest;">
+      <a-entity camera wasd-controls look-controls position="0 1.6 0">
+        <a-entity cursor="rayOrigin:mouse;" raycaster="far:20; interval:200; objects:.interactive"></a-entity>
+      </a-entity>
+
+      <a-entity geometry="primitive: plane; width:5; height:5;" material="shader: flat;" position="3 3 -5"
+        live-canvas="src:#view-canvas;">
+      </a-entity>
+
+      <a-entity geometry="primitive: plane; width:5; height:5;" material="shader: flat;" position="-3 3 -5"
+        live-canvas="src:#reference-canvas;">
+      </a-entity>
+      <!-- red button -->
+      <a-entity id="red_button" position="2 0 -2">
+        <a-entity class="button interactive" position="0 0.9 0" geometry="primitive:cylinder; radius:0.15; height:0.2;"
+          material="color:rgb(255, 100, 100)"
+          animation__mouseenter="property:material.color; type:color; to:rgb(255, 0, 0); startEvents:mouseenter; dur:200"
+          animation__mouseleave="property:material.color; type:color; to:rgb(255, 100, 100); startEvents:mouseleave; dur:200"
+          animation__click="property:position.y; from:0.85; to:0.9; startEvents:click; dur:300" shadow></a-entity>
+        <a-entity position="0 0.3 0" geometry="primitive:box; width:0.5; depth:0.5; height:1.2;"
+          material="color:rgb(255, 255, 255)" shadow></a-entity>
+      </a-entity>
+
+      <a-entity id="blue_button" position="1 0 -2">
+        <a-entity class="button interactive" position="0 0.9 0" geometry="primitive:cylinder; radius:0.15; height:0.2;"
+          material="color:rgb(100, 100, 255)"
+          animation__mouseenter="property:material.color; type:color; to:rgb(0, 0, 255); startEvents:mouseenter; dur:200"
+          animation__mouseleave="property:material.color; type:color; to:rgb(100, 100, 255); startEvents:mouseleave; dur:200"
+          animation__click="property:position.y; from:0.85; to:0.9; startEvents:click; dur:300" shadow></a-entity>
+        <a-entity position="0 0.3 0" geometry="primitive:box; width:0.5; depth:0.5; height:1.2;"
+          material="color:rgb(255, 255, 255)" shadow></a-entity>
+      </a-entity>
+
+      <a-entity id="green_button" position="0 0 -2">
+        <a-entity class="button interactive" position="0 0.9 0" geometry="primitive:cylinder; radius:0.15; height:0.2;"
+          material="color:rgb(0, 255, 0)"
+          animation__mouseenter="property:material.color; type:color; to:rgb(0, 255, 0); startEvents:mouseenter; dur:200"
+          animation__mouseleave="property:material.color; type:color; to:rgb(100, 255, 100); startEvents:mouseleave; dur:200"
+          animation__click="property:position.y; from:0.85; to:0.9; startEvents:click; dur:300" shadow></a-entity>
+        <a-entity position="0 0.3 0" geometry="primitive:box; width:0.5; depth:0.5; height:1.2;"
+          material="color:rgb(255, 255, 255)" shadow></a-entity>
+      </a-entity>
+
+      <a-entity id="yellow_button" position="-1 0 -2">
+        <a-entity class="button interactive" position="0 0.9 0" geometry="primitive:cylinder; radius:0.15; height:0.2;"
+          material="color:rgb(255, 255, 0)"
+          animation__mouseenter="property:material.color; type:color; to:rgb(255, 255, 0); startEvents:mouseenter; dur:200"
+          animation__mouseleave="property:material.color; type:color; to:rgb(255, 255, 100); startEvents:mouseleave; dur:200"
+          animation__click="property:position.y; from:0.85; to:0.9; startEvents:click; dur:300" shadow></a-entity>
+        <a-entity position="0 0.3 0" geometry="primitive:box; width:0.5; depth:0.5; height:1.2;"
+          material="color:rgb(255, 255, 255)" shadow></a-entity>
+      </a-entity>
+
+      <a-entity id="black_button" position="-2 0 -2">
+        <a-entity class="button interactive" position="0 0.9 0" geometry="primitive:cylinder; radius:0.15; height:0.2;"
+          material="color:rgb(0, 0, 0)"
+          animation__mouseenter="property:material.color; type:color; to:rgb(0, 0, 0); startEvents:mouseenter; dur:200"
+          animation__mouseleave="property:material.color; type:color; to:rgb(50, 50, 50); startEvents:mouseleave; dur:200"
+          animation__click="property:position.y; from:0.85; to:0.9; startEvents:click; dur:300" shadow></a-entity>
+        <a-entity position="0 0.3 0" geometry="primitive:box; width:0.5; depth:0.5; height:1.2;"
+          material="color:rgb(255, 255, 255)" shadow></a-entity>
+      </a-entity>
+    </a-entity>
+  </a-scene>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const canvas = document.getElementById("view-canvas");
+    const ctx = canvas.getContext("2d");
+    const canvasRef = document.getElementById("reference-canvas");
+    const ctxRef = canvasRef.getContext("2d");
+    const teamModal = document.getElementById('choose-team-modal');
+    const startExperienceBtn = document.getElementById('menu-start-button');
+    const teamOneBtn = document.getElementById('team-1-btn');
+    const teamTwoBtn = document.getElementById('team-2-btn');
+
+    socket.on('connect', (userData) => {
+      console.log('Client Connected!');
+      socket.emit('choose_role', 'assistant');
+
+      function startExperience() {
+        document.querySelector('#menu-overlay').style.display = 'none';
+        socket.emit('player_ready');
+      }
+
+      // reading canvas data
+      socket.on('send_drawing', (data) => {
+        let img = new Image;
+        img.src = data;
+        img.onload = function () {
+          ctx.drawImage(img, 0, 0); // Or at whatever offset you like
+        };
+        console.log('update!!', img);
+      });
+
+      socket.on('start_game', (data) => {
+        console.log(data)
+        let img = new Image;
+        img.src = data;
+        img.onload = function () {
+          ctxRef.drawImage(img, 0, 0); // Or at whatever offset you like
+        };
+      });
+
+      teamOneBtn.addEventListener('click', function () {
+        socket.emit('choose_team', 'team_one');
+        teamModal.style.display = 'none';
+        startExperienceBtn.style.display = 'inline-block';
+      });
+
+      teamTwoBtn.addEventListener('click', function () {
+        socket.emit('choose_team', 'team_two');
+        teamModal.style.display = 'none';
+        startExperienceBtn.style.display = 'inline-block';
+      });
+
+      document.querySelector('#red_button').querySelector('.button').addEventListener('click', function () {
+        socket.emit('red');
+      });
+
+      document.querySelector('#green_button').querySelector('.button').addEventListener('click', function () {
+        socket.emit('green');
+      });
+
+      document.querySelector('#blue_button').querySelector('.button').addEventListener('click', function () {
+        socket.emit('blue');
+      });
+
+      document.querySelector('#yellow_button').querySelector('.button').addEventListener('click', function () {
+        socket.emit('yellow');
+      });
+
+      document.querySelector('#black_button').querySelector('.button').addEventListener('click', function () {
+        socket.emit('black');
+      });
+
+      startExperienceBtn.addEventListener('click', startExperience);
+    });
+  </script>
+</body>
+
+</html>
